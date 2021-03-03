@@ -6,4 +6,6 @@
   #define SECRET_APN "prepay.pelion"
   #define SECRET_LOGIN "arduino"
   #define SECRET_PASS "arduino"
+  #define SECRET_TAGID ""
+  #define SECRET_PHONEID ""
 #endif
