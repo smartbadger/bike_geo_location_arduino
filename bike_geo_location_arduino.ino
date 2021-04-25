@@ -11,7 +11,8 @@
 #include "bike.h"
 #include "nfc_reader.h"
 #include "sensor.h"
-#include "sample.h"
+#include "sensordata.h"
+#include "Async_Operations.h"
 
 #define PN532_IRQ (6)
 #define PN532_RESET (7) // Not connected by default on the NFC Shield
@@ -29,9 +30,12 @@
 #define sfPrint(x) Serial.println(F(x)); // to disable debugging comment
 // #define sfPrint(x); // to disable debugging uncomment
 
-long runningTime = millis(); // time since startup to subtract for internal clock
-bool debug = true;           // set to false for production
+bool debug = true; // set to false for production
 
+long long dt = {5000};
+long long dtt = {250};
+Async_Operations delayed(&dt, 1, -1);
+Async_Operations dauth(&dtt, 1, -1);
 // setup bike class
 NfcReader nfc = NfcReader(PN532_IRQ, PN532_RESET);
 Sensor sen = Sensor();
@@ -43,7 +47,7 @@ bool aboveThresholdValue(float original, float current, float threshold)
   return abs((original - current) / original) >= threshold;
 }
 
-bool checkForMotion(Sample current, Sample previous)
+bool checkForMotion(SensorData current, SensorData previous)
 {
   float t = 0.5;
   float cr = current.rotation.calculateAverage();
@@ -64,16 +68,24 @@ void setup()
 
   nfc.setupNFC();
   sen.setup();
+  delayed.setLoopCallback(&cb);
+  delayed.start();
+  dauth.setLoopCallback(&handleAuth);
+  dauth.start();
 }
 
-void loop()
+void cb()
 {
-  // get time elapsed, replaces delay() for 'hyper-threading'
-  long elapsedTime = millis() - runningTime;
-  static bool motionTrigger = false;
-  runningTime += elapsedTime;
+  Serial.println("READ SENSOR");
+  SensorData s = sen.readSensor();
+  bool motion = checkForMotion(bike.getSensorData(), s);
+  bike.setSensorData(s);
+}
 
-  bool auth = nfc.nfcAuthentication(runningTime);
+void handleAuth()
+{
+  Serial.println("HANDLE AUTH");
+  bool auth = nfc.nfcAuthentication();
   bool locked = bike.isLocked();
   // put your main code here, to run repeatedly:
   if (locked && auth)
@@ -86,8 +98,10 @@ void loop()
     bike.setLock(true);
     Serial.println("set locked");
   }
-  Sample s = sen.readSensor(elapsedTime);
-  bool motion = checkForMotion(bike.getSample(), s);
-  bike.setSample(s);
-  
+}
+
+void loop()
+{
+  dauth.update();
+  delayed.update();
 }

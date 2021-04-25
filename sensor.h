@@ -1,11 +1,10 @@
 #include <Adafruit_MPU6050.h>
 #include "coordinate.h"
-#include "sample.h"
+#include "sensordata.h"
 #define sfPrint(x) Serial.println(F(x));
-
 class Sensor
 {
-  Adafruit_MPU6050 _mpu;
+  Adafruit_MPU6050 _mpu; 
   bool _ready;
 
 public:
@@ -29,14 +28,11 @@ public:
     _ready = true;
   }
 
-  Sample readSensor(long elapsedTime)
-  {
-    Sample current;
-    static long sensorReadTime = 0; // interval to read nfc tag at
-    int readInterval = 1000;
 
-    sensorReadTime += elapsedTime;
-    if (sensorReadTime >= readInterval && _ready)
+  SensorData readSensor()
+  {
+    SensorData current;
+    if (_ready)
     {
       /* Get new sensor events with the readings */
       sensors_event_t a, g, temp;
@@ -46,7 +42,6 @@ public:
       current.rotation = Coord(g.gyro.x, g.gyro.y, g.gyro.z);
       current.temp = temp.temperature;
     }
-
     return current;
   }
 };
