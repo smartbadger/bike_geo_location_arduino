@@ -1,18 +1,18 @@
 #include "secrets.h"
 #include "location.h"
 #include "sensordata.h"
-//#include "nfc_reader.h"
-//#include "sensor.h"
-#include "coordinate.h"
-#include "Async_Operations.h"
 
-long long dtt = {250};
-Async_Operations delayedd(&dtt, 1, -1);
+#include "sensor.h"
+#include "coordinate.h"
+#include "indicator.h"
+
 class Bike
 {
-    Async_Operations delayed = delayedd;
+
     SensorData _state;
     Location _location;
+    Sensor _sen;
+
     double _battery;
     bool _controls;
     enum State
@@ -23,14 +23,20 @@ class Bike
     };
 
     State _currentState = LOCKED;
-    State _targetState = LOCKED;
 
 public:
-    Bike()
+    Bike(Sensor sensor)
     {
+        _sen = sensor;
         _controls = false;
     }
-
+    void setup()
+    {
+        _sen.setup();
+    }
+    void loop() {
+        
+    }
     bool isLocked()
     {
         return _currentState == LOCKED || _currentState == ALARM;
@@ -48,13 +54,6 @@ public:
             _controls = true;
         }
     }
-    void setup()
-    {
-        delayed.start();
-    }
-    void readNFC()
-    {
-    }
     SensorData getSensorData()
     {
         return _state;
@@ -62,6 +61,13 @@ public:
     void setSensorData(SensorData s)
     {
         _state = s;
+    }
+    bool checkForMotion()
+    {
+        SensorData s = _sen.readSensor();
+        bool motion = checkForMotion(getSensorData(), s);
+        setSensorData(s);
+        return motion;
     }
 
 private:

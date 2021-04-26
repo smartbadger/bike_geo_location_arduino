@@ -1,3 +1,6 @@
+#ifndef _NFC_H
+#define _NFC_H
+
 #include <Adafruit_PN532.h>
 
 class NfcReader
@@ -113,3 +116,5 @@ public:
     _nfcReady = true;
   }
 };
+
+#endif

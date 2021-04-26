@@ -10,13 +10,17 @@
 #include "secrets.h"
 #include "bike.h"
 #include "nfc_reader.h"
-#include "sensor.h"
 #include "sensordata.h"
 #include "Async_Operations.h"
+#include "indicator.h"
+#include "timer.h"
 
 #define PN532_IRQ (6)
 #define PN532_RESET (7) // Not connected by default on the NFC Shield
 
+// #define blueLed (5)
+// #define greenLed (4)
+// #define redLed (3)
 #define blueLed (5)
 #define greenLed (4)
 #define redLed (3)
@@ -27,35 +31,21 @@
 #define THING_ID "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 #define BOARD_ID "615b3b99-01d6-4966-9daa-35a6a3c61a6e"
 
-#define sfPrint(x) Serial.println(F(x)); // to disable debugging comment
 // #define sfPrint(x); // to disable debugging uncomment
 
 bool debug = true; // set to false for production
 
-long long dt = {5000};
+
 long long dtt = {250};
-Async_Operations delayed(&dt, 1, -1);
 Async_Operations dauth(&dtt, 1, -1);
+
 // setup bike class
+Sensor sensor = Sensor();
 NfcReader nfc = NfcReader(PN532_IRQ, PN532_RESET);
-Sensor sen = Sensor();
-Bike bike = Bike();
+Indicator status = Indicator(greenLed, blueLed, redLed, alarm);
+Bike bike = Bike(sensor);
+
 // GsmModule gsm = GSM();
-
-bool aboveThresholdValue(float original, float current, float threshold)
-{
-  return abs((original - current) / original) >= threshold;
-}
-
-bool checkForMotion(SensorData current, SensorData previous)
-{
-  float t = 0.5;
-  float cr = current.rotation.calculateAverage();
-  float pr = previous.rotation.calculateAverage();
-  float ca = current.acceleration.calculateAverage();
-  float pa = previous.acceleration.calculateAverage();
-  return aboveThresholdValue(cr, pr, t) || aboveThresholdValue(ca, pa, t);
-}
 
 void setup()
 {
@@ -65,26 +55,13 @@ void setup()
     while (!Serial)
       delay(10); // will pause Zero, Leonardo, etc until serial console opens
   }
-
+  bike.setup();
   nfc.setupNFC();
-  sen.setup();
-  delayed.setLoopCallback(&cb);
-  delayed.start();
-  dauth.setLoopCallback(&handleAuth);
   dauth.start();
 }
 
-void cb()
+void readNFC()
 {
-  Serial.println("READ SENSOR");
-  SensorData s = sen.readSensor();
-  bool motion = checkForMotion(bike.getSensorData(), s);
-  bike.setSensorData(s);
-}
-
-void handleAuth()
-{
-  Serial.println("HANDLE AUTH");
   bool auth = nfc.nfcAuthentication();
   bool locked = bike.isLocked();
   // put your main code here, to run repeatedly:
@@ -102,6 +79,4 @@ void handleAuth()
 
 void loop()
 {
-  dauth.update();
-  delayed.update();
 }
